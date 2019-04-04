@@ -31,11 +31,22 @@ builderList = []
 while True:
     # We only support Python 3, which means brackets around print()
     print('pyround:', gc.round(), 'time left:', gc.get_time_left_ms(), 'ms')
-
+    
     # frequent try/catches are a good idea
     try:
         for unit in gc.my_units():
+
+            location = unit.location
+            attackIfCan(location, unit)
+
             if gc.round <= 30:
+
+                if unit.unit_type == bc.UnitType.Worker:
+                    for d in directions:
+                        if gc.can_replicate(unit.id, d):
+                            gc.replicate(unit.id, d)
+                        
+
                 if unit.unit_type == bc.UnitType.Factory:
                     garrison = unit.structure_garrison()
                     if len(garrison) > 0:
@@ -67,7 +78,7 @@ while True:
                     if gc.karbonite() > bc.UnitType.Factory.blueprint_cost() and gc.can_blueprint(unit.id, bc.UnitType.Factory, d):
                         gc.blueprint(unit.id, bc.UnitType.Factory, d)
                     # and if that fails, try to move
-                    elif gc.is_move_ready(uxnit.id) and gc.can_move(unit.id, d):
+                    elif gc.is_move_ready(unit.id) and gc.can_move(unit.id, d):
                         gc.move_robot(unit.id, d)
             
             if gc.round <= 120 & gc.round >30:
@@ -110,7 +121,7 @@ while True:
             if gc.round > 150 & gc.round <= 300:
                 #factory makes mages
                 if unit.unit_type == bc.UnitType.Factory:
-                garrison = unit.structure_garrison()
+                    garrison = unit.structure_garrison()
                 if len(garrison) > 0:
                     d = random.choice(directions)
                     if gc.can_unload(unit.id, d):
@@ -156,3 +167,91 @@ while True:
     # it forces everything we've written this turn to be written to the manager.
     sys.stdout.flush()
     sys.stderr.flush()
+
+#This function takes in a location and a unit and will automatically
+# check to see if the unit can attack an opposing team unit around it. if it can, it attacks the closest to itself.
+
+def attackIfCan(location, unit):
+    if location.is_on_map():
+        nearby = gc.sense_nearby_units(location.map_location(), 2)
+        for other in nearby:
+            if other.team != my_team and gc.is_attack_ready(unit.id) and gc.can_attack(unit.id, other.id):
+                print('attacked a thing!')
+                gc.attack(unit.id, other.id)
+                return "attack"
+
+
+#This function takes in a location and a unit and will automatically
+# check to see if the unit can heal an ally unit around it. if it can, it heals the closest ally.
+
+def healIfCan(location, unit):
+    if location.is_on_map():
+        nearby = gc.sense_nearby_units(location.map_location(), 2)
+        for other in nearby:
+            if other.team == my_team and gc.is_heal_ready(unit.id) and gc.can_heal(unit.id, other.id):
+                print('healed a thing!')
+                gc.heal(unit.id, other.id)
+                return "heal"
+
+
+#This function takes in a location and a unit and will automatically
+# try to use it on the closest unit to it. It will check to see what kind of unit 
+# is being passed to it, and will check the right ability for said unit.
+# returns ability used if the ability was able to be used,
+# and could not use ability if it couldn't.
+
+def useAbilityIfCan(location, unit):
+
+    if unit.unit_type == gc.UnitType.Knight:
+        if location.is_on_map():
+            nearby = gc.sense_nearby_units(location.map_location(), 2)
+            for other in nearby:
+                if other.team != my_team and gc.is_javelin_ready(unit.id) and gc.can_javelin(unit.id, other.id):
+                    print('attacked a thing!')
+                    gc.javelin(unit.id, other.id)
+                    return "ability used"
+
+    if unit.unit_type == gc.UnitType.Ranger:
+        if location.is_on_map():
+            nearby = gc.sense_nearby_units(location.map_location(), 2)
+            for other in nearby:
+                if other.team != my_team and gc.is_begin_snipe_ready(unit.id) and gc.can_begin_snipe(unit.id, other.id):
+                    print('attacked a thing!')
+                    gc.begin_snipe(unit.id, other.id)
+                    return "ability used"
+
+    if unit.unit_type == gc.UnitType.Mage:
+        if location.is_on_map():
+            nearby = gc.sense_nearby_units(location.map_location(), 2)
+            for other in nearby:
+                if other.team != my_team and gc.is_blink_ready(unit.id) and gc.can_blink(unit.id, other.id):
+                    print('attacked a thing!')
+                    gc.blink(unit.id, other.id)
+                    return "ability used"
+
+    if unit.unit_type == gc.UnitType.Healer:
+        if location.is_on_map():
+            nearby = gc.sense_nearby_units(location.map_location(), 2)
+            for other in nearby:
+                if other.team != my_team and gc.is_overcharge_ready(unit.id) and gc.can_overcharge(unit.id, other.id):
+                    print('attacked a thing!')
+                    gc.overcharge(unit.id, other.id)
+                    return "ability used"
+
+    return "could not use ability"
+
+#This function takes in a unit and a location, it will see if there are any units around it that
+# if there are, it will attempt to move toward the closest opposing unit found.
+def move_to_engauge(location, unit):
+        if location.is_on_map():
+            nearby = gc.sense_nearby_units(location.map_location(), 2)
+            for other in nearby:
+                if other.team != my_team and gc.is_move_ready(unit.id):
+                    d = direction_to(other.location)
+                    if gc.can_move(unit.id, d):
+                        print('attacked a thing!')
+                        gc.move(unit.id, d)
+                        return "moved toward opposition"
+        return "No move possible"
+                    
+    
