@@ -242,7 +242,7 @@ def useAbilityIfCan(location, unit):
 
 #This function takes in a unit and a location, it will see if there are any units around it that
 # if there are, it will attempt to move toward the closest opposing unit found.
-def move_to_engauge(location, unit):
+def move_to_engage(location, unit):
         if location.is_on_map():
             nearby = gc.sense_nearby_units(location.map_location(), 2)
             for other in nearby:
