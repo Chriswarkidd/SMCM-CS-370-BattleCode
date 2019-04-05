@@ -155,8 +155,9 @@ while True:
 
             location = unit.location
             if unit.unit_type == bc.UnitType.Knight or unit.unit_type == bc.UnitType.Mage or unit.unit_type == bc.UnitType.Ranger:
-                move_to_engage(location, unit)
                 attackIfCan(location, unit)
+                move_to_engage(location, unit)
+                move_random(unit, 0)                
 
             if gc.round() <= 800:
 
