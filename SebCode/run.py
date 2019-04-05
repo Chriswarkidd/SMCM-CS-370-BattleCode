@@ -169,7 +169,7 @@ while True:
                                 gc.replicate(unit.id, d)
                                 continue
                     move_random(unit, 0)
-                    
+
             if gc.round() <= 800:
 
                 if unit.unit_type == bc.UnitType.Worker:
@@ -178,13 +178,18 @@ while True:
                             gc.blueprint(unit.id, bc.UnitType.Factory, d)
                         # and if that fails, try to move
                         elif location.is_on_map():
-                                nearby = gc.sense_nearby_units(location.map_location(), 2)
+                                nearby = gc.sense_nearby_units_by_type(location.map_location(), unit.vision_range, bc.UnitType.Factory)
                                 for other in nearby:
                                     if gc.can_build(unit.id, other.id):
                                         gc.build(unit.id, other.id)
                                         print('built a factory!')
                                         # move onto the next unit
                                         continue
+                                    else:
+                                        d = unit.location.map_location().direction_to(other.location.map_location())
+                                        if gc.can_move(unit.id, d):
+                                            gc.move_robot(unit.id, d)
+                                            continue                                   
                         else: 
                             try_to_harvest(unit.location, unit)
                             move_random(unit, 0)
