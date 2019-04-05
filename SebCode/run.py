@@ -45,24 +45,24 @@ while True:
             if gc.round() <= 800:
 
                 if unit.unit_type == bc.UnitType.Worker:
-                    if gc.karbonite() > bc.UnitType.Factory.blueprint_cost() and gc.can_blueprint(unit.id, bc.UnitType.Factory, d):
-                        gc.blueprint(unit.id, bc.UnitType.Factory, d)
-                    # and if that fails, try to move
-                    elif location.is_on_map():
-                            nearby = gc.sense_nearby_units(location.map_location(), 2)
-                            for other in nearby:
-                                if gc.can_build(unit.id, other.id):
-                                    gc.build(unit.id, other.id)
-                                    print('built a factory!')
-                                    # move onto the next unit
-                                    continue
-                    else: 
-                        try_to_harvest(unit.location, unit)
-                        for d in directions:
+                    for d in directions:
+                        if gc.karbonite() > bc.UnitType.Factory.blueprint_cost() and gc.can_blueprint(unit.id, bc.UnitType.Factory, d):
+                            gc.blueprint(unit.id, bc.UnitType.Factory, d)
+                        # and if that fails, try to move
+                        elif location.is_on_map():
+                                nearby = gc.sense_nearby_units(location.map_location(), 2)
+                                for other in nearby:
+                                    if gc.can_build(unit.id, other.id):
+                                        gc.build(unit.id, other.id)
+                                        print('built a factory!')
+                                        # move onto the next unit
+                                        continue
+                        else: 
+                            try_to_harvest(unit.location, unit)
+                            move_random(unit, 0)
                             if gc.can_replicate(unit.id, d):
                                 gc.replicate(unit.id, d)
                                 continue
-                        move_random(unit, 0)
 
                 if unit.unit_type == bc.UnitType.Factory:
                     garrison = unit.structure_garrison()
@@ -170,21 +170,6 @@ def useAbilityIfCan(location, unit):
 
     return "could not use ability"
 
-#This function takes in a unit and a location, it will see if there are any units around it that
-# if there are, it will attempt to move toward the closest opposing unit found.
-def move_to_engage(location, unit):
-        if location.is_on_map():
-            nearby = gc.sense_nearby_units(location.map_location(), unit.vision_range)
-            if gc.is_move_ready(unit.id):
-                for other in nearby:
-                    if other.team != my_team:
-                        d = direction_to(other.location)
-                        if gc.can_move(unit.id, d):
-                            print('attacked a thing!')
-                            gc.move(unit.id, d)
-                            return "moved toward opposition"
-        return "No move possible"
-
 def try_to_harvest(location, unit):
     
     for d in directions:
@@ -204,3 +189,17 @@ def move_random(unit, attempts):
         else:
             return "move timed out"
 
+#This function takes in a unit and a location, it will see if there are any units around it that
+# if there are, it will attempt to move toward the closest opposing unit found.
+def move_to_engage(location, unit):
+        if location.is_on_map():
+            nearby = gc.sense_nearby_units(location.map_location(), unit.vision_range)
+            if gc.is_move_ready(unit.id):
+                for other in nearby:
+                    if other.team != my_team:
+                        d = gc.direction_to(other.location)
+                        if gc.can_move(unit.id, d):
+                            print('attacked a thing!')
+                            gc.move(unit.id, d)
+                            return "moved toward opposition"
+        return "No move possible"
