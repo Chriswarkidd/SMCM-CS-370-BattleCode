@@ -81,7 +81,7 @@ def useAbilityIfCan(location, unit):
                 nearby = gc.sense_nearby_units(location.map_location(), unit.vision_range)
                 if gc.is_begin_snipe_ready(unit.id):
                     for other in nearby:
-                        if other.team != my_team and gc.can_begin_snipe(unit.id, other.location):
+                        if other.team != my_team and gc.can_begin_snipe(unit.id, other.location.map_location()):
                             print('attacked a thing!')
                             gc.begin_snipe(unit.id, other.location)
                             return "ability used"
@@ -155,10 +155,21 @@ while True:
 
             location = unit.location
             if unit.unit_type == bc.UnitType.Knight or unit.unit_type == bc.UnitType.Mage or unit.unit_type == bc.UnitType.Ranger:
+                useAbilityIfCan(location, unit)
                 attackIfCan(location, unit)
                 move_to_engage(location, unit)
                 move_random(unit, 0)                
 
+            if gc.round() <= 30:
+
+                if unit.unit_type == bc.UnitType.Worker:
+                    for d in directions:
+                            try_to_harvest(unit.location, unit)
+                            if gc.can_replicate(unit.id, d):
+                                gc.replicate(unit.id, d)
+                                continue
+                    move_random(unit, 0)
+                    
             if gc.round() <= 800:
 
                 if unit.unit_type == bc.UnitType.Worker:
