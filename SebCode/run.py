@@ -29,68 +29,6 @@ guardList = []
 gathererList = []
 builderList = []
 
-while True:
-    # We only support Python 3, which means brackets around print()
-    print('pyround:', gc.round(), 'time left:', gc.get_time_left_ms(), 'ms')
-
-    # frequent try/catches are a good idea
-    try:
-        for unit in gc.my_units():
-
-            location = unit.location
-            if unit.unit_type == bc.UnitType.Knight or unit.unit_type == bc.UnitType.Mage or unit.unit_type == bc.UnitType.Ranger:
-                attackIfCan(location, unit)
-                move_to_engage(location, unit)
-                
-
-            if gc.round() <= 800:
-
-                if unit.unit_type == bc.UnitType.Worker:
-                    for d in directions:
-                        if gc.karbonite() > bc.UnitType.Factory.blueprint_cost() and gc.can_blueprint(unit.id, bc.UnitType.Factory, d):
-                            gc.blueprint(unit.id, bc.UnitType.Factory, d)
-                        # and if that fails, try to move
-                        elif location.is_on_map():
-                                nearby = gc.sense_nearby_units(location.map_location(), 2)
-                                for other in nearby:
-                                    if gc.can_build(unit.id, other.id):
-                                        gc.build(unit.id, other.id)
-                                        print('built a factory!')
-                                        # move onto the next unit
-                                        continue
-                        else: 
-                            try_to_harvest(unit.location, unit)
-                            move_random(unit, 0)
-                            if gc.can_replicate(unit.id, d):
-                                gc.replicate(unit.id, d)
-                                continue
-
-                if unit.unit_type == bc.UnitType.Factory:
-                    garrison = unit.structure_garrison()
-                    if len(garrison) > 0:
-                        d = random.choice(directions)
-                        if gc.can_unload(unit.id, d):
-                            print('unloaded a Knight!')
-                            gc.unload(unit.id, d)
-                            guardList.append(unit.id)
-                            continue
-                    elif gc.can_produce_robot(unit.id, bc.UnitType.Knight):
-                        gc.produce_robot(unit.id, bc.UnitType.Knight)
-                        print('produced a Knight!')
-                        continue
-
-    except Exception as e:
-        print('Error:', e)
-        # use this to show where the error was
-        traceback.print_exc()
-
-    # send the actions we've performed, and wait for our next turn.
-    gc.next_turn()
-
-    # these lines are not strictly necessary, but it helps make the logs make more sense.
-    # it forces everything we've written this turn to be written to the manager.
-    sys.stdout.flush()
-    sys.stderr.flush()
 
 #This function takes in a location and a unit and will automatically
 # check to see if the unit can attack an opposing team unit around it. if it can, it attacks the closest to itself.
@@ -171,6 +109,21 @@ def useAbilityIfCan(location, unit):
 
     return "could not use ability"
 
+#This function takes in a unit and a location, it will see if there are any units around it that
+# if there are, it will attempt to move toward the closest opposing unit found.
+def move_to_engage(location, unit):
+        if location.is_on_map():
+            nearby = gc.sense_nearby_units(location.map_location(), unit.vision_range)
+            if gc.is_move_ready(unit.id):
+                for other in nearby:
+                    if other.team != my_team:
+                        d = gc.direction_to(other.location)
+                        if gc.can_move(unit.id, d):
+                            print('attacked a thing!')
+                            gc.move(unit.id, d)
+                            return "moved toward opposition"
+        return "No move possible"
+
 def try_to_harvest(location, unit):
     
     for d in directions:
@@ -190,17 +143,67 @@ def move_random(unit, attempts):
         else:
             return "move timed out"
 
-#This function takes in a unit and a location, it will see if there are any units around it that
-# if there are, it will attempt to move toward the closest opposing unit found.
-def move_to_engage(location, unit):
-        if location.is_on_map():
-            nearby = gc.sense_nearby_units(location.map_location(), unit.vision_range)
-            if gc.is_move_ready(unit.id):
-                for other in nearby:
-                    if other.team != my_team:
-                        d = gc.direction_to(other.location)
-                        if gc.can_move(unit.id, d):
-                            print('attacked a thing!')
-                            gc.move(unit.id, d)
-                            return "moved toward opposition"
-        return "No move possible"
+
+
+while True:
+    # We only support Python 3, which means brackets around print()
+    print('pyround:', gc.round(), 'time left:', gc.get_time_left_ms(), 'ms')
+
+    # frequent try/catches are a good idea
+    try:
+        for unit in gc.my_units():
+
+            location = unit.location
+            if unit.unit_type == bc.UnitType.Knight or unit.unit_type == bc.UnitType.Mage or unit.unit_type == bc.UnitType.Ranger:
+                move_to_engage(location, unit)
+                attackIfCan(location, unit)
+
+            if gc.round <= 800:
+
+                if unit.unit_type == bc.UnitType.Worker:
+                    for d in directions:
+                        if gc.karbonite() > bc.UnitType.Factory.blueprint_cost() and gc.can_blueprint(unit.id, bc.UnitType.Factory, d):
+                            gc.blueprint(unit.id, bc.UnitType.Factory, d)
+                        # and if that fails, try to move
+                        elif location.is_on_map():
+                                nearby = gc.sense_nearby_units(location.map_location(), 2)
+                                for other in nearby:
+                                    if gc.can_build(unit.id, other.id):
+                                        gc.build(unit.id, other.id)
+                                        print('built a factory!')
+                                        # move onto the next unit
+                                        continue
+                        else: 
+                            try_to_harvest(unit.location, unit)
+                            move_random(unit, 0)
+                            if gc.can_replicate(unit.id, d):
+                                gc.replicate(unit.id, d)
+                                continue
+
+                if unit.unit_type == bc.UnitType.Factory:
+                    garrison = unit.structure_garrison()
+                    if len(garrison) > 0:
+                        d = random.choice(directions)
+                        if gc.can_unload(unit.id, d):
+                            print('unloaded a Knight!')
+                            gc.unload(unit.id, d)
+                            guardList.append(unit.id)
+                            continue
+                    elif gc.can_produce_robot(unit.id, bc.UnitType.Knight):
+                        gc.produce_robot(unit.id, bc.UnitType.Knight)
+                        print('produced a Knight!')
+                        continue
+
+    except Exception as e:
+        print('Error:', e)
+        # use this to show where the error was
+        traceback.print_exc()
+
+    # send the actions we've performed, and wait for our next turn.
+    gc.next_turn()
+
+    # these lines are not strictly necessary, but it helps make the logs make more sense.
+    # it forces everything we've written this turn to be written to the manager.
+    sys.stdout.flush()
+    sys.stderr.flush()
+
