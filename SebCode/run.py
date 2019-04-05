@@ -133,7 +133,7 @@ def try_to_harvest(location, unit):
     return "nothing to harvest"
 
 def move_random(unit, attempts):
-    if unit.is_move_ready():
+    if gc.is_move_ready(unit):
         d = random.choice(directions)
         if gc.can_move(unit.id, d):
             gc.move(unit.id, d)
