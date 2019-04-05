@@ -27,6 +27,9 @@ my_team = gc.team()
 guardList = []
 gathererList = []
 builderList = []
+attackGroupAList = []
+attackGroupBList = []
+groupForMarsList = []
 
 while True:
     # We only support Python 3, which means brackets around print()
@@ -67,7 +70,7 @@ while True:
                     if gc.karbonite() > bc.UnitType.Factory.blueprint_cost() and gc.can_blueprint(unit.id, bc.UnitType.Factory, d):
                         gc.blueprint(unit.id, bc.UnitType.Factory, d)
                     # and if that fails, try to move
-                    elif gc.is_move_ready(uxnit.id) and gc.can_move(unit.id, d):
+                    elif gc.is_move_ready(unit.id) and gc.can_move(unit.id, d):
                         gc.move_robot(unit.id, d)
             
             if gc.round <= 120 & gc.round >30:
@@ -110,7 +113,7 @@ while True:
             if gc.round > 150 & gc.round <= 300:
                 #factory makes mages
                 if unit.unit_type == bc.UnitType.Factory:
-                garrison = unit.structure_garrison()
+                    garrison = unit.structure_garrison()
                 if len(garrison) > 0:
                     d = random.choice(directions)
                     if gc.can_unload(unit.id, d):
