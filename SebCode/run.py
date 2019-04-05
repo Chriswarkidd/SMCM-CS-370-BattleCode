@@ -120,7 +120,7 @@ def move_to_engage(location, unit):
                         d = gc.direction_to(other.location)
                         if gc.can_move(unit.id, d):
                             print('attacked a thing!')
-                            gc.move(unit.id, d)
+                            gc.move_robot(unit.id, d)
                             return "moved toward opposition"
         return "No move possible"
 
@@ -136,7 +136,7 @@ def move_random(unit, attempts):
     if gc.is_move_ready(unit.id):
         d = random.choice(directions)
         if gc.can_move(unit.id, d):
-            gc.move(unit.id, d)
+            gc.move_robot(unit.id, d)
             return "moved"
         elif attempts <= 4:
             move_random(unit, attempts + 1)
