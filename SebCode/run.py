@@ -45,10 +45,6 @@ while True:
             if gc.round() <= 800:
 
                 if unit.unit_type == bc.UnitType.Worker:
-                    for d in directions:
-                        if gc.can_replicate(unit.id, d):
-                            gc.replicate(unit.id, d)
-                            continue
                     if gc.karbonite() > bc.UnitType.Factory.blueprint_cost() and gc.can_blueprint(unit.id, bc.UnitType.Factory, d):
                         gc.blueprint(unit.id, bc.UnitType.Factory, d)
                     # and if that fails, try to move
@@ -62,6 +58,10 @@ while True:
                                     continue
                     else: 
                         try_to_harvest(unit.location, unit)
+                        for d in directions:
+                            if gc.can_replicate(unit.id, d):
+                                gc.replicate(unit.id, d)
+                                continue
                         move_random(unit, 0)
 
                 if unit.unit_type == bc.UnitType.Factory:
