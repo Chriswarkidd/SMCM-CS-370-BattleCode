@@ -117,7 +117,7 @@ def move_to_engage(location, unit):
             if gc.is_move_ready(unit.id):
                 for other in nearby:
                     if other.team != my_team:
-                        d = unit.location.direction_to(other.location)
+                        d = unit.location.map_location().direction_to(other.location)
                         if gc.can_move(unit.id, d):
                             print('attacked a thing!')
                             gc.move_robot(unit.id, d)
