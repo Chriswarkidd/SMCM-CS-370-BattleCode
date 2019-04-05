@@ -158,7 +158,7 @@ while True:
                 move_to_engage(location, unit)
                 attackIfCan(location, unit)
 
-            if gc.round <= 800:
+            if gc.round() <= 800:
 
                 if unit.unit_type == bc.UnitType.Worker:
                     for d in directions:
