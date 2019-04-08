@@ -250,8 +250,8 @@ while True:
                             if gc.can_replicate(unit.id, d):
                                 gc.replicate(unit.id, d)
                                 continue
-                    #move_random(unit, 0)
-                    move_and_expand(unit, 2)
+                    move_random(unit, 0)
+                    #move_and_expand(unit, 2)
 
 
             elif gc.round() <= 195:
