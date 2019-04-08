@@ -183,42 +183,12 @@ def move_random(unit, attempts):
         else:
             return "move timed out"
 
-#move_and_expand is a method taken from https://github.com/AnPelec/Battlecode-2018/blob/master/Project%20Achilles/run.py
-#changes were made to add more explosive exploration the later the game gets, while keeping it easy and grouped(ish) in the early game
-def move_and_expand(unit, expand):
-	# makes the robot move to the least crowded square
-	# hoping that this is expanding the crowd
-	moves = []
-	
-	location = unit.location
-	for temp in range(9):
-		dir = bc.Direction(temp)
-		# center is direction 8 so it will always be last
-		try:
-			new_location = (location.map_location()).add(dir)
-			expanding = expand
-			if gc.round() > 100:
-                            expanding = random.randint(1, expand)
-			nearby_units = gc.sense_nearby_units_by_team(new_location, expanding, my_team)
-			moves.append((len(nearby_units), temp))
-		except Exception as e:
-			print('Error:', e)
-			# use this to show where the error was
-			traceback.print_exc()			
-				
-	moves.sort()
-	for tup in moves:
-		if gc.is_move_ready(unit.id) and gc.can_move(unit.id, bc.Direction(tup[1])):
-			gc.move_robot(unit.id, bc.Direction(tup[1]))
-			print('Moved successfully!')
-			continue
+
 
 while True:
     # We only support Python 3, which means brackets around print()
     print('pyround:', gc.round(), 'time left:', gc.get_time_left_ms(), 'ms')
-    expansion = 1
-    if gc.round() > 299 and gc.round()%100 == 0:
-        expansion = expansion + 2
+
     # frequent try/catches are a good idea
     try:
         for unit in gc.my_units():
@@ -239,8 +209,7 @@ while True:
                     continue
                 if (nearest_enemy_location != location.map_location()):
                     move_toward_location(location, unit, nearest_enemy_location)
-                #move_random(unit, 0)
-                move_and_expand(unit, expansion)
+                move_random(unit, 0)                
 
             if gc.round() <= 30:
 
@@ -250,9 +219,7 @@ while True:
                             if gc.can_replicate(unit.id, d):
                                 gc.replicate(unit.id, d)
                                 continue
-                    #move_random(unit, 0)
-                    move_and_expand(unit, 2)
-
+                    move_random(unit, 0)
 
             elif gc.round() <= 195:
 
@@ -276,8 +243,7 @@ while True:
                                             continue                                   
                         else: 
                             try_to_harvest(unit.location, unit)
-                            #move_random(unit, 0)
-                            move_and_expand(unit, expansion + 1)
+                            move_random(unit, 0)
 
                 if unit.unit_type == bc.UnitType.Factory:
                     garrison = unit.structure_garrison()
@@ -315,8 +281,7 @@ while True:
                                             continue                                   
                         else: 
                             try_to_harvest(unit.location, unit)
-                            #move_random(unit, 0)
-                            move_and_expand(unit, expansion + 2)
+                            move_random(unit, 0)
 
                 if unit.unit_type == bc.UnitType.Factory:
                     garrison = unit.structure_garrison()
@@ -335,8 +300,7 @@ while True:
                 if unit.unit_type == bc.UnitType.Worker:
                     for d in directions:
                         try_to_harvest(unit.location, unit)
-                        move_and_expand(unit, expansion + 5)
-                        #this was random move
+                        move_random(unit, 0)
                 
                 if unit.unit_type == bc.UnitType.Factory:
                     garrison = unit.structure_garrison()
@@ -364,4 +328,3 @@ while True:
     # it forces everything we've written this turn to be written to the manager.
     sys.stdout.flush()
     sys.stderr.flush()
-	
