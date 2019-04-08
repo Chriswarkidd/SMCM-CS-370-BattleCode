@@ -184,7 +184,7 @@ def move_random(unit, attempts):
             return "move timed out"
 
 #move_and_expand is a method taken from https://github.com/AnPelec/Battlecode-2018/blob/master/Project%20Achilles/run.py
-#Edits were(or will be) made to the code to handle walls during exploration 
+#changes were made to add more explosive exploration the later the game gets, while keeping it easy and grouped(ish) in the early game
 def move_and_expand(unit, expand):
 	# makes the robot move to the least crowded square
 	# hoping that this is expanding the crowd
@@ -364,4 +364,6 @@ while True:
     # it forces everything we've written this turn to be written to the manager.
     sys.stdout.flush()
     sys.stderr.flush()
+	
+
 	
