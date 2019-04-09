@@ -286,6 +286,16 @@ def unit_on_earth(unit):
             nearest_enemy_location_earth = unit.location.map_location()
 
     nearest_enemy_location_earth = sense_opposition(location, unit, nearest_enemy_location_earth)
+
+    if unit.unit_type == bc.UnitType.Rocket:
+        nearby = gc.sense_nearby_units(location.map_location(), unit.vision_range)
+        for other in nearby:
+            if other.team != my_team:
+                landLoc = getMarsLocation(unit)
+                if gc.can_launch_rocket(unit.id, landLoc):
+                    gc.launch_rocket(unit.id,landLoc)
+                    continue
+
     if unit.unit_type == bc.UnitType.Knight or unit.unit_type == bc.UnitType.Mage or unit.unit_type == bc.UnitType.Ranger:
         if location.is_in_garrison() or location.is_in_space():
             return
