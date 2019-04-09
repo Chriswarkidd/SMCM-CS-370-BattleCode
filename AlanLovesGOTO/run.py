@@ -1,8 +1,8 @@
-//Chris Brown, Ben Valois, 
-//AlanLovesGOTO run python file
-//This is an AI designed to tackle last years battlecode competition
-//General tactics are to initially prioritize factory building rocket research and exploration
-//once the enemy is located they are rushed by available units 
+#Chris Brown, Ben Valois, 
+#AlanLovesGOTO run python file
+#This is an AI designed to tackle last years battlecode competition
+#General tactics are to initially prioritize factory building rocket research and exploration
+#once the enemy is located they are rushed by available units 
 
 import battlecode as bc
 import random
