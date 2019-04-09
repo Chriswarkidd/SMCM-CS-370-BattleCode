@@ -1,4 +1,4 @@
-#Chris Brown, Ben Valois, 
+#Chris Brown, Ben Valois, Eamon Kostopulos, Sebastian Cortes
 #AlanLovesGOTO run python file
 #This is an AI designed to tackle last years battlecode competition
 #General tactics are to initially prioritize factory building rocket research and exploration
