@@ -18,11 +18,16 @@ print("pystarted")
 
 #random.seed(6137)
 
-gc.queue_research(bc.UnitType.Rocket)
+
 gc.queue_research(bc.UnitType.Worker)
 gc.queue_research(bc.UnitType.Knight)
 gc.queue_research(bc.UnitType.Ranger)
+gc.queue_research(bc.UnitType.Rocket)
 gc.queue_research(bc.UnitType.Ranger)
+gc.queue_research(bc.UnitType.Ranger)
+gc.queue_research(bc.UnitType.Knight)
+gc.queue_research(bc.UnitType.Mage)
+gc.queue_research(bc.UnitType.Mage)
 
 my_team = gc.team()
 
@@ -358,12 +363,12 @@ def unit_on_earth(unit):
                                 gc.build(unit.id, other.id)
                                 print('built a rocket!')
                                 # move onto the next unit
-                                continue
+                                return
                             elif other.structure_is_built() == False:
                                 d = unit.location.map_location().direction_to(other.location.map_location())
                                 if gc.is_move_ready(unit.id) and gc.can_move(unit.id, d):
                                     gc.move_robot(unit.id, d)
-                                    continue                                   
+                                    return                                   
                 else: 
                     try_to_harvest(unit.location, unit)
                     #move_random(unit, 0)
@@ -395,7 +400,7 @@ def unit_on_earth(unit):
                             gc.unload(unit.id,d)
                                     
             if location.is_on_planet(bc.Planet.Earth):
-                if len(garrison) >= 5:
+                if len(garrison) >= 6:
                     landLoc = getMarsLocation(unit)
                     if gc.can_launch_rocket(unit.id, landLoc):
                         gc.launch_rocket(unit.id,landLoc)
@@ -410,6 +415,22 @@ def unit_on_earth(unit):
                     
         if unit.unit_type == bc.UnitType.Worker:
             for d in directions:
+                if gc.karbonite() > bc.UnitType.Factory.blueprint_cost() and gc.can_blueprint(unit.id, bc.UnitType.Factory, d):
+                    gc.blueprint(unit.id, bc.UnitType.Factory, d)
+                # and if that fails, try to move
+                elif location.is_on_map():
+                        nearby = gc.sense_nearby_units_by_type(location.map_location(), unit.vision_range, bc.UnitType.Factory)
+                        for other in nearby:
+                            if gc.can_build(unit.id, other.id) and other.structure_is_built() == False:
+                                gc.build(unit.id, other.id)
+                                print('built a factory!')
+                                # move onto the next unit
+                                return
+                            elif other.structure_is_built() == False:
+                                d = unit.location.map_location().direction_to(other.location.map_location())
+                                if gc.is_move_ready(unit.id) and gc.can_move(unit.id, d):
+                                    gc.move_robot(unit.id, d)
+                                    return
                 try_to_harvest(unit.location, unit)
                 move_and_expand(unit, expansion + 5)
                 #this was random move
@@ -427,6 +448,19 @@ def unit_on_earth(unit):
                 gc.produce_robot(unit.id, bc.UnitType.Ranger)
                 print('produced a Ranger!')
                 return
+
+    if unit.unit_type == bc.UnitType.Rocket and gc.round() == 549:
+                    nearby = gc.sense_nearby_units(unit.location.map_location(),2)
+                    garrison = unit.structure_garrison()
+                    for other in nearby:
+                        garrison = unit.structure_garrison()
+                        if gc.can_load(unit.id, other.id) and len(garrison) < 9:
+                            gc.load(unit.id, other.id)
+                            print("Unit loaded into rocket")
+                    landLoc = getMarsLocation(unit)
+                    if gc.can_launch_rocket(unit.id, landLoc):
+                        gc.launch_rocket(unit.id,landLoc)
+                        print("Launched rocket")
 
 #Logic for unit movement on mars
 #This method takes in the unit who's turn it currently is, and determines the best move for it at the current turn.
