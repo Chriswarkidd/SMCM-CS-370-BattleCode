@@ -16,7 +16,7 @@ directions = list(bc.Direction)
 
 print("pystarted")
 
-random.seed(6137)
+#random.seed(6137)
 
 gc.queue_research(bc.UnitType.Rocket)
 gc.queue_research(bc.UnitType.Worker)
@@ -29,8 +29,13 @@ my_team = gc.team()
 guardList = []
 gathererList = []
 builderList = []
-nearest_enemy_location = None
+nearest_enemy_location_earth = None
+nearest_enemy_location_mars = None
+reached_mars = False
+expansion = 1
 
+marsLocations = []
+initialMars = gc.starting_map(bc.Planet.Mars)
 
 #This function takes in a location and a unit and will automatically
 # check to see if the unit can attack an opposing team unit around it. if it can, it attacks the closest to itself.
@@ -88,17 +93,6 @@ def useAbilityIfCan(location, unit):
                             gc.begin_snipe(unit.id, other.location.map_location())
                             return "ability used"
 
-        #need to remove this as blink requires a location.
-        # if unit.unit_type == gc.UnitType.Mage:
-        #     if location.is_on_map():
-        #         nearby = gc.sense_nearby_units(location.map_location(), 2)
-        #         if gc.is_blink_ready(unit.id):
-        #             for other in nearby:
-        #                 if other.team != my_team and gc.can_blink(unit.id, other.id):
-        #                     print('attacked a thing!')
-        #                     gc.blink(unit.id, other.id)
-        #                     return "ability used"
-
         if unit.unit_type == bc.UnitType.Healer:
             if location.is_on_map():
                 nearby = gc.sense_nearby_units(location.map_location(), unit.vision_range)
@@ -128,31 +122,32 @@ def move_to_engage(location, unit):
 
 #This function takes in a unit and a location, it will see if there are any units around it that
 # if there are, it will return the map_location of the first enemy found.
-def sense_opposition(location, unit):
+def sense_opposition(location, unit, current_nearest_enemy_location):
         if location.is_on_map():
             if location.is_in_garrison() or location.is_in_space():
-                return nearest_enemy_location
+                return current_nearest_enemy_location
             nearby = gc.sense_nearby_units(location.map_location(), unit.vision_range)
             if gc.is_move_ready(unit.id):
                 for other in nearby:
                     if other.team != my_team:
                         return other.location.map_location()
-        return nearest_enemy_location
+        return current_nearest_enemy_location
 
 #This function takes in a unit and a location, it will see if there are any units around it that
 # if there are, it will return the map_location of the first enemy found.
-def sense_opposition_factories(location, unit):
+def sense_opposition_factories(location, unit, current_nearest_enemy_location):
         if location.is_on_map():
             if location.is_in_garrison() or location.is_in_space():
-                return nearest_enemy_location
+                return current_nearest_enemy_location
             nearby = gc.sense_nearby_units_by_type(location.map_location(), unit.vision_range, bc.UnitType.Factory)
             if gc.is_move_ready(unit.id):
                 for other in nearby:
                     if other.team != my_team:
                         return other.location.map_location()
-        return nearest_enemy_location
+        return current_nearest_enemy_location
        
-
+#This function takes in a location, unit, and destination, and if possible moves the unit toward the 
+# destination.
 def move_toward_location(location, unit, destination):
         
         if location.is_on_map():
@@ -164,6 +159,8 @@ def move_toward_location(location, unit, destination):
 
         return "No move possible"
 
+#This function takes in a location, and unit, if possible the unit attempts to harvest 
+# every square around it.
 def try_to_harvest(location, unit):
     
     for d in directions:
@@ -172,13 +169,15 @@ def try_to_harvest(location, unit):
             return "Harvested"
     return "nothing to harvest"
 
+#This function takes in a unit and a number of attempts and recursively attempts to move in a random direction.
+#if it has attempted more than 8 times, it will return false.
 def move_random(unit, attempts):
     if gc.is_move_ready(unit.id):
         d = random.choice(directions)
         if gc.can_move(unit.id, d):
             gc.move_robot(unit.id, d)
             return "moved"
-        elif attempts <= 4:
+        elif attempts <= 8:
             move_random(unit, attempts + 1)
         else:
             return "move timed out"
@@ -213,144 +212,300 @@ def move_and_expand(unit, expand):
 			print('Moved successfully!')
 			continue
 
-while True:
-    # We only support Python 3, which means brackets around print()
-    print('pyround:', gc.round(), 'time left:', gc.get_time_left_ms(), 'ms')
-    expansion = 1
-    if gc.round() > 299 and gc.round()%100 == 0:
-        expansion = expansion + 2
-    # frequent try/catches are a good idea
-    try:
-        for unit in gc.my_units():
+#Finds and returns the dimentions of a planet
+#Idea from https://github.com/AnPelec/Battlecode-2018/blob/master/Project%20Achilles/run.py
+def mapDimensions(planet):
+    minCoor = 19
+    maxCoor = 49
+    coorX = 19
+    coorY = 19
+    
+    planetMap = gc.starting_map(planet)
+    
+    while(minCoor <= maxCoor):
+        median = (minCoor + maxCoor)//2
+        checkSpot = bc.MapLocation(planet, median, 0)
+        if planetMap.on_map(checkSpot):
+            if coorX < median:
+                coorX = median
+            minCoor = median + 1
+        else:
+            maxCoor = median - 1
+    
+    minCoor = 19
+    maxCoor = 49
+    
+    while(minCoor <= maxCoor):
+        median = (minCoor + maxCoor)//2
+        checkSpot = bc.MapLocation(planet, 0, median)
+        if planetMap.on_map(checkSpot):
+            if coorY < median:
+                coorY = median
+            minCoor = median + 1
+        else:
+            maxCoor = median - 1
+            
+    return(coorX,coorY)
 
-            if gc.round() <= 1:
-                if unit.unit_type == bc.UnitType.Worker:
-                    nearest_enemy_location = unit.location.map_location()
+(heightMars, widthMars) = mapDimensions(bc.Planet.Mars)
 
-            location = unit.location
-            nearest_enemy_location = sense_opposition(location, unit)
+#Creates a list of coordinates of Mars which are free to land with Rockets
+def free_spots_on_Mars():
+    for i in range(heightMars+1):
+        for j in range(widthMars+1):
+            if (i,j) not in marsLocations:
+                checkLoc = bc.MapLocation(bc.Planet.Mars, i, j)
+                try:
+                    if initialMars.is_passable_terrain_at(checkLoc):
+                        marsLocations.append((i,j))
+                except Exception as e:
+                    print(i,j)
+                    print("Error:",e)
+                    traceback.print_exc()
 
-            if unit.unit_type == bc.UnitType.Knight or unit.unit_type == bc.UnitType.Mage or unit.unit_type == bc.UnitType.Ranger:
-                if location.is_in_garrison() or location.is_in_space():
-                    continue
-                useAbilityIfCan(location, unit)
-                attackIfCan(location, unit)
-                if move_to_engage(location, unit):
-                    continue
-                if (nearest_enemy_location != location.map_location()):
-                    move_toward_location(location, unit, nearest_enemy_location)
+#Gets a random location's coordinates from marsLocations (spots on Mars that are free)                    
+def getMarsLocation(unit):
+    randLoc = random.choice(marsLocations)
+    marsLocations.remove(randLoc)
+    return bc.MapLocation(bc.Planet.Mars,randLoc[0],randLoc[1])
+
+#Logic for unit movement on earth
+#This method takes in the unit who's turn it currently is, and determines the best move for it at the current turn.
+def unit_on_earth(unit):
+    global nearest_enemy_location_earth
+
+    location = unit.location
+    
+    if gc.round() <= 1:
+        if unit.unit_type == bc.UnitType.Worker:
+            nearest_enemy_location_earth = unit.location.map_location()
+
+    nearest_enemy_location_earth = sense_opposition(location, unit, nearest_enemy_location_earth)
+    if unit.unit_type == bc.UnitType.Knight or unit.unit_type == bc.UnitType.Mage or unit.unit_type == bc.UnitType.Ranger:
+        if location.is_in_garrison() or location.is_in_space():
+            return
+        useAbilityIfCan(location, unit)
+        attackIfCan(location, unit)
+        if move_to_engage(location, unit):
+            return
+        if (nearest_enemy_location_earth != location.map_location()):
+            move_toward_location(location, unit, nearest_enemy_location_earth)
+            #move_random(unit, 0)
+            move_and_expand(unit, expansion)
+
+    if gc.round() <= 30:
+
+        if unit.unit_type == bc.UnitType.Worker:
+            for d in directions:
+                    try_to_harvest(unit.location, unit)
+                    if gc.can_replicate(unit.id, d):
+                        gc.replicate(unit.id, d)
+                        continue
+            #move_random(unit, 0)
+            move_random(unit, 0)
+
+
+    elif gc.round() <= 195:
+
+        if unit.unit_type == bc.UnitType.Worker:
+            for d in directions:
+                if gc.karbonite() > bc.UnitType.Factory.blueprint_cost() and gc.can_blueprint(unit.id, bc.UnitType.Factory, d):
+                    gc.blueprint(unit.id, bc.UnitType.Factory, d)
+                # and if that fails, try to move
+                elif location.is_on_map():
+                        nearby = gc.sense_nearby_units_by_type(location.map_location(), unit.vision_range, bc.UnitType.Factory)
+                        for other in nearby:
+                            if gc.can_build(unit.id, other.id) and other.structure_is_built() == False:
+                                gc.build(unit.id, other.id)
+                                print('built a factory!')
+                                # move onto the next unit
+                                continue
+                            elif other.structure_is_built() == False:
+                                d = unit.location.map_location().direction_to(other.location.map_location())
+                                if gc.is_move_ready(unit.id) and gc.can_move(unit.id, d):
+                                    gc.move_robot(unit.id, d)
+                                    continue                                   
+                else: 
+                    try_to_harvest(unit.location, unit)
+                    #move_random(unit, 0)
+                    move_and_expand(unit, expansion + 1)
+
+        if unit.unit_type == bc.UnitType.Factory:
+            garrison = unit.structure_garrison()
+            if len(garrison) > 0:
+                d = random.choice(directions)
+                if gc.can_unload(unit.id, d):
+                    print('unloaded a Knight!')
+                    gc.unload(unit.id, d)
+                    guardList.append(unit.id)
+                    return
+            elif gc.can_produce_robot(unit.id, bc.UnitType.Knight):
+                gc.produce_robot(unit.id, bc.UnitType.Knight)
+                print('produced a Knight!')
+                return
+
+    elif gc.round() <= 350:
+
+        if unit.unit_type == bc.UnitType.Worker:
+            for d in directions:
+                if gc.karbonite() > bc.UnitType.Rocket.blueprint_cost() and gc.can_blueprint(unit.id, bc.UnitType.Rocket, d):
+                    gc.blueprint(unit.id, bc.UnitType.Rocket, d)
+                # and if that fails, try to move
+                elif location.is_on_map():
+                        nearby = gc.sense_nearby_units_by_type(location.map_location(), unit.vision_range, bc.UnitType.Rocket)
+                        for other in nearby:
+                            if gc.can_build(unit.id, other.id) and other.structure_is_built() == False:
+                                gc.build(unit.id, other.id)
+                                print('built a rocket!')
+                                # move onto the next unit
+                                continue
+                            elif other.structure_is_built() == False:
+                                d = unit.location.map_location().direction_to(other.location.map_location())
+                                if gc.is_move_ready(unit.id) and gc.can_move(unit.id, d):
+                                    gc.move_robot(unit.id, d)
+                                    continue                                   
+                else: 
+                    try_to_harvest(unit.location, unit)
+                    #move_random(unit, 0)
+                    move_and_expand(unit, expansion + 2)
+
+        if unit.unit_type == bc.UnitType.Factory:
+            garrison = unit.structure_garrison()
+            if len(garrison) > 0:
+                d = random.choice(directions)
+                if gc.can_unload(unit.id, d):
+                    print('unloaded a unit!')
+                    gc.unload(unit.id, d)
+                    guardList.append(unit.id)
+                    return
+            elif gc.can_produce_robot(unit.id, bc.UnitType.Ranger):
+                gc.produce_robot(unit.id, bc.UnitType.Ranger)
+                print('produced a Ranger!')
+                return
+                        
+    else: 
+        if unit.unit_type == bc.UnitType.Rocket:
+            nearby = gc.sense_nearby_units(unit.location.map_location(),2)
+            garrison = unit.structure_garrison()
+                    
+            if location.is_on_planet(bc.Planet.Mars):
+                if len(garrison) > 0:
+                    for d in directions:
+                        if gc.can_unload(unit.id,d):
+                            gc.unload(unit.id,d)
+                                    
+            if location.is_on_planet(bc.Planet.Earth):
+                if len(garrison) >= 5:
+                    landLoc = getMarsLocation(unit)
+                    if gc.can_launch_rocket(unit.id, landLoc):
+                        gc.launch_rocket(unit.id,landLoc)
+                        print("Launched rocket")
+
+                for other in nearby:
+                    garrison = unit.structure_garrison()
+                    if gc.can_load(unit.id, other.id) and len(garrison) < 9:
+                        gc.load(unit.id, other.id)
+                        print("Unit loaded into rocket")
+                    
+                    
+        if unit.unit_type == bc.UnitType.Worker:
+            for d in directions:
+                try_to_harvest(unit.location, unit)
+                move_and_expand(unit, expansion + 5)
+                #this was random move
+                
+        if unit.unit_type == bc.UnitType.Factory:
+            garrison = unit.structure_garrison()
+            if len(garrison) > 0:
+                d = random.choice(directions)
+                if gc.can_unload(unit.id, d):
+                    print('unloaded a unit!')
+                    gc.unload(unit.id, d)
+                    guardList.append(unit.id)
+                    return
+            elif gc.can_produce_robot(unit.id, bc.UnitType.Ranger):
+                gc.produce_robot(unit.id, bc.UnitType.Ranger)
+                print('produced a Ranger!')
+                return
+
+#Logic for unit movement on mars
+#This method takes in the unit who's turn it currently is, and determines the best move for it at the current turn.
+def unit_on_mars(unit):
+        global expansion
+        global reached_mars
+        global nearest_enemy_location_mars
+
+        if reached_mars == False:
+            reached_mars = True
+            nearest_enemy_location_mars = unit.location.map_location()
+
+        location = unit.location
+        nearest_enemy_location_mars = sense_opposition(location, unit, nearest_enemy_location_mars)
+
+        if unit.unit_type == bc.UnitType.Knight or unit.unit_type == bc.UnitType.Mage or unit.unit_type == bc.UnitType.Ranger:
+            if location.is_in_garrison() or location.is_in_space():
+                return
+            useAbilityIfCan(location, unit)
+            attackIfCan(location, unit)
+            if move_to_engage(location, unit):
+                return
+            if (nearest_enemy_location_mars != location.map_location()):
+                move_toward_location(location, unit, nearest_enemy_location_mars)
                 #move_random(unit, 0)
                 move_and_expand(unit, expansion)
 
-            if gc.round() <= 30:
-
-                if unit.unit_type == bc.UnitType.Worker:
+        if unit.unit_type == bc.UnitType.Rocket:
+            nearby = gc.sense_nearby_units(unit.location.map_location(),2)
+            garrison = unit.structure_garrison()
+                    
+            if location.is_on_planet(bc.Planet.Mars):
+                if len(garrison) > 0:
                     for d in directions:
-                            try_to_harvest(unit.location, unit)
-                            if gc.can_replicate(unit.id, d):
-                                gc.replicate(unit.id, d)
-                                continue
-                    move_random(unit, 0)
-                    #move_and_expand(unit, 2)
+                        if gc.can_unload(unit.id,d):
+                            gc.unload(unit.id,d)
+                                    
+            if location.is_on_planet(bc.Planet.Earth):
+                if len(garrison) == 8:
+                    landLoc = getMarsLocation(unit)
+                    if gc.can_launch_rocket(unit.id, landLoc):
+                        gc.launch_rocket(unit.id,landLoc)
+                        print("Launched rocket")
 
-
-            elif gc.round() <= 195:
-
-                if unit.unit_type == bc.UnitType.Worker:
-                    for d in directions:
-                        if gc.karbonite() > bc.UnitType.Factory.blueprint_cost() and gc.can_blueprint(unit.id, bc.UnitType.Factory, d):
-                            gc.blueprint(unit.id, bc.UnitType.Factory, d)
-                        # and if that fails, try to move
-                        elif location.is_on_map():
-                                nearby = gc.sense_nearby_units_by_type(location.map_location(), unit.vision_range, bc.UnitType.Factory)
-                                for other in nearby:
-                                    if gc.can_build(unit.id, other.id) and other.structure_is_built() == False:
-                                        gc.build(unit.id, other.id)
-                                        print('built a factory!')
-                                        # move onto the next unit
-                                        continue
-                                    elif other.structure_is_built() == False:
-                                        d = unit.location.map_location().direction_to(other.location.map_location())
-                                        if gc.is_move_ready(unit.id) and gc.can_move(unit.id, d):
-                                            gc.move_robot(unit.id, d)
-                                            continue                                   
-                        else: 
-                            try_to_harvest(unit.location, unit)
-                            #move_random(unit, 0)
-                            move_and_expand(unit, expansion + 1)
-
-                if unit.unit_type == bc.UnitType.Factory:
+                for other in nearby:
                     garrison = unit.structure_garrison()
-                    if len(garrison) > 0:
-                        d = random.choice(directions)
-                        if gc.can_unload(unit.id, d):
-                            print('unloaded a Knight!')
-                            gc.unload(unit.id, d)
-                            guardList.append(unit.id)
-                            continue
-                    elif gc.can_produce_robot(unit.id, bc.UnitType.Knight):
-                        gc.produce_robot(unit.id, bc.UnitType.Knight)
-                        print('produced a Knight!')
-                        continue
-
-            elif gc.round() <= 200:
-
-                if unit.unit_type == bc.UnitType.Worker:
-                    for d in directions:
-                        if gc.karbonite() > bc.UnitType.Rocket.blueprint_cost() and gc.can_blueprint(unit.id, bc.UnitType.Rocket, d):
-                            gc.blueprint(unit.id, bc.UnitType.Rocket, d)
-                        # and if that fails, try to move
-                        elif location.is_on_map():
-                                nearby = gc.sense_nearby_units_by_type(location.map_location(), unit.vision_range, bc.UnitType.Rocket)
-                                for other in nearby:
-                                    if gc.can_build(unit.id, other.id) and other.structure_is_built() == False:
-                                        gc.build(unit.id, other.id)
-                                        print('built a rocket!')
-                                        # move onto the next unit
-                                        continue
-                                    elif other.structure_is_built() == False:
-                                        d = unit.location.map_location().direction_to(other.location.map_location())
-                                        if gc.is_move_ready(unit.id) and gc.can_move(unit.id, d):
-                                            gc.move_robot(unit.id, d)
-                                            continue                                   
-                        else: 
-                            try_to_harvest(unit.location, unit)
-                            #move_random(unit, 0)
-                            move_and_expand(unit, expansion + 2)
-
-                if unit.unit_type == bc.UnitType.Factory:
-                    garrison = unit.structure_garrison()
-                    if len(garrison) > 0:
-                        d = random.choice(directions)
-                        if gc.can_unload(unit.id, d):
-                            print('unloaded a unit!')
-                            gc.unload(unit.id, d)
-                            guardList.append(unit.id)
-                            continue
-                    elif gc.can_produce_robot(unit.id, bc.UnitType.Ranger):
-                        gc.produce_robot(unit.id, bc.UnitType.Ranger)
-                        print('produced a Ranger!')
-                        continue
-            else: 
-                if unit.unit_type == bc.UnitType.Worker:
-                    for d in directions:
-                        try_to_harvest(unit.location, unit)
-                        move_and_expand(unit, expansion + 5)
-                        #this was random move
+                    if gc.can_load(unit.id, other.id) and len(garrison) < 9:
+                        gc.load(unit.id, other.id)
+                        print("Unit loaded into rocket")
+                    
+                    
+        if unit.unit_type == bc.UnitType.Worker:
+            if gc.karbonite() >= 60:     
+                for d in directions:
+                    if gc.can_replicate(unit.id, d):
+                        gc.replicate(unit.id, d)
+            else:
+                for d in directions:
+                    try_to_harvest(unit.location, unit)
+                    move_and_expand(unit, expansion)
+                    #this was random move
                 
-                if unit.unit_type == bc.UnitType.Factory:
-                    garrison = unit.structure_garrison()
-                    if len(garrison) > 0:
-                        d = random.choice(directions)
-                        if gc.can_unload(unit.id, d):
-                            print('unloaded a unit!')
-                            gc.unload(unit.id, d)
-                            guardList.append(unit.id)
-                            continue
-                    elif gc.can_produce_robot(unit.id, bc.UnitType.Ranger):
-                        gc.produce_robot(unit.id, bc.UnitType.Ranger)
-                        print('produced a Ranger!')
-                        continue
+                    
+free_spots_on_Mars()
+
+while True:
+    # We only support Python 3, which means brackets around print()
+    print('pyround:', gc.round(), 'time left:', gc.get_time_left_ms(), 'ms')
+    if gc.round() > 299 and gc.round()%100 == 0:
+        expansion = expansion + 2
+    # frequent try/catches are a good idea  
+    try:
+        for unit in gc.my_units():
+            if unit.location.is_on_planet(bc.Planet.Earth):
+                unit_on_earth(unit)
+            elif unit.location.is_on_planet(bc.Planet.Mars):
+                unit_on_mars(unit)
+            else:
+                continue
 
     except Exception as e:
         print('Error:', e)
